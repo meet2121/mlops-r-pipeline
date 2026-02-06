@@ -1,0 +1,35 @@
+name: R MLOps Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  run-ml-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+
+      - name: Install Dependencies
+        run: |
+          Rscript -e 'install.packages(c("readr","dplyr","caret","randomForest","gbm","jsonlite"))'
+
+      - name: Run Ingestion
+        run: Rscript scripts/ingest.R
+
+      - name: Run Validation
+        run: Rscript scripts/validate.R
+
+      - name: Run Preprocessing
+        run: Rscript scripts/preprocess.R
+
+      - name: Run Training
+        run: Rscript scripts/train.R
+
+      - name: Run Evaluation
+        run: Rscript scripts/evaluate.R
