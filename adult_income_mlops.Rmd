@@ -1,0 +1,245 @@
+---
+title: "Adult Income MLOps Project"
+author: "Mihir"
+date: "2026-02-06"
+output: html_document
+---
+
+# SECTION 1 — INTRODUCTION
+
+## Introduction
+
+In this project, I developed an end-to-end MLOps pipeline in R to solve a real-world machine learning problem. The aim was not only to build accurate models but also to follow a structured workflow similar to industry practices, including data ingestion, validation, preprocessing, model training, evaluation, and experiment tracking.
+
+The dataset used in this project is the UCI Machine Learning Repository Adult Income Dataset. This dataset contains demographic and employment-related information about individuals such as age, education, occupation, working hours, and marital status.
+
+## Machine Learning Task
+
+The goal of this project is to perform a Binary Classification task.
+
+We predict whether a person’s annual income is:
+
+Low Income (≤ 50K)  
+High Income (> 50K)
+
+This type of problem is common in socio-economic analysis and helps understand the relationship between personal attributes and income level.
+
+## Algorithms Considered
+
+Since the task is classification, multiple algorithms can be used. In this project, I selected the following:
+
+Logistic Regression – A baseline linear classification model  
+Random Forest – An ensemble model that handles nonlinear patterns well  
+Gradient Boosting (GBM) – A powerful boosting-based ensemble method  
+
+Using multiple models allows performance comparison and better understanding of model behavior.
+
+## Project Objective
+
+The main objective of this project is to demonstrate MLOps principles using R, including:
+
+Automated data ingestion  
+Dataset validation  
+Structured preprocessing  
+Training multiple ML models  
+Model evaluation using metrics  
+Saving results for reproducibility  
+
+This ensures the machine learning workflow is organized, repeatable, and production-oriented, rather than just experimental coding.
+
+---
+
+# SECTION 2 — DATASET UNDERSTANDING
+
+## Code to Load Dataset
+
+```{r}
+library(readr)
+data <- read_csv("data/raw/adult.csv", show_col_types = FALSE)
+head(data)
+```
+
+**Interpretation**
+
+The output shows the first six rows of the dataset. We can see various features such as age, education, occupation, working hours, and income category. This helps confirm that the dataset has been loaded correctly.
+
+## Checking Dataset Structure
+
+```{r}
+str(data)
+```
+
+**Interpretation**
+
+From the structure output, we observe that the dataset contains both numeric and categorical features. The target variable is income, which we will later convert into a binary classification label.
+
+## Summary Statistics
+
+```{r}
+summary(data)
+```
+
+**Interpretation**
+
+The summary provides insights such as age distribution, working hours range, and frequency of categorical values. This step helps identify potential data cleaning needs and understand overall patterns in the dataset.
+
+---
+
+# SECTION 3 — DATA PREPROCESSING
+
+## Converting Categorical Variables
+
+```{r}
+library(dplyr)
+data <- data %>% mutate(across(where(is.character), as.factor))
+```
+
+**Interpretation**
+
+Machine learning models in R require categorical data to be in factor format.
+
+## Cleaning Target Variable
+
+```{r}
+data$income <- trimws(data$income)
+data$income <- ifelse(data$income == ">50K", "high", "low")
+data$income <- factor(data$income, levels = c("low", "high"))
+```
+
+**Interpretation**
+
+The income column was converted into a binary factor.
+
+## Train-Test Split
+
+```{r}
+library(caret)
+set.seed(42)
+train_index <- createDataPartition(data$income, p = 0.8, list = FALSE)
+train_data <- data[train_index, ]
+test_data  <- data[-train_index, ]
+dim(train_data)
+dim(test_data)
+```
+
+**Interpretation**
+
+The dataset is divided into training and testing sets.
+
+---
+
+# SECTION 4 — MODEL SELECTION & JUSTIFICATION
+
+```{r}
+library(caret)
+library(randomForest)
+library(gbm)
+```
+
+**Interpretation**
+
+These libraries are used for training classification models.
+
+---
+
+# SECTION 5 — MODEL TRAINING
+
+## Logistic Regression
+
+```{r}
+logistic_model <- glm(income ~ ., data = train_data, family = "binomial")
+logistic_model
+```
+
+## Random Forest
+
+```{r}
+rf_model <- randomForest(income ~ ., data = train_data, ntree = 50)
+rf_model
+```
+
+## Gradient Boosting
+
+```{r}
+train_data$income_num <- ifelse(train_data$income == "high", 1, 0)
+
+gbm_model <- gbm(
+  income_num ~ . - income,
+  data = train_data,
+  distribution = "bernoulli",
+  n.trees = 50,
+  interaction.depth = 3,
+  shrinkage = 0.1,
+  verbose = FALSE
+)
+gbm_model
+```
+
+---
+
+# SECTION 6 — MODEL EVALUATION & RESULTS
+
+## Align Factor Levels
+
+```{r}
+for(col in names(train_data)) {
+  if(is.factor(train_data[[col]])) {
+    test_data[[col]] <- factor(test_data[[col]], levels = levels(train_data[[col]]))
+  }
+}
+
+test_data <- na.omit(test_data)
+test_data$income <- factor(test_data$income, levels = c("low", "high"))
+```
+
+## Logistic Regression Evaluation
+
+```{r}
+pred_log_prob <- predict(logistic_model, test_data, type = "response")
+pred_log <- ifelse(pred_log_prob > 0.5, "high", "low")
+acc_log <- mean(pred_log == test_data$income)
+acc_log
+```
+
+## Random Forest Evaluation
+
+```{r}
+pred_rf <- predict(rf_model, test_data)
+acc_rf <- mean(pred_rf == test_data$income)
+acc_rf
+```
+
+## Gradient Boosting Evaluation
+
+```{r}
+test_data$income_num <- ifelse(test_data$income == "high", 1, 0)
+pred_gbm_prob <- predict(gbm_model, test_data, n.trees = 50, type = "response")
+pred_gbm <- ifelse(pred_gbm_prob > 0.5, 1, 0)
+acc_gbm <- mean(pred_gbm == test_data$income_num)
+acc_gbm
+```
+
+## Accuracy Results
+
+Based on the evaluation:
+
+| Model | Accuracy |
+|------|-----------|
+| Logistic Regression | **0.85** |
+| Random Forest | **0.87** |
+| Gradient Boosting | **0.86** |
+
+**Interpretation**
+
+The results show that all models perform well. Random Forest achieved the highest accuracy, while Logistic Regression provided a strong baseline. Gradient Boosting also showed competitive performance.
+
+
+---
+
+# SECTION 7 — CONCLUSION
+
+In this project, I successfully developed an end-to-end MLOps pipeline in R for the Adult Income classification problem. The workflow followed a structured and reproducible approach similar to real-world machine learning systems.
+
+Three classification algorithms were implemented: Logistic Regression, Random Forest, and Gradient Boosting. Among these, Random Forest achieved the highest accuracy.
+
+Overall, the project demonstrates both machine learning knowledge and MLOps workflow implementation using R.

@@ -1,0 +1,5 @@
+{
+  "logistic_accuracy": [0.8538],
+  "rf_accuracy": [0.8667],
+  "gbm_accuracy": [0.8595]
+}
